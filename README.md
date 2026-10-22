@@ -18,3 +18,7 @@
 - 📟 **Commands**: Big option of commands including Toggle Light/Dark mode, Screensaver, Sleep, Lock Screen, Logout, Volume
 - 📓 **Themes**: Three themes: Aqua, Default (Big Sur - Sequoia) and Liquid Glass.
 - ✏️ **Settings Format**: Edit settings in User Friendly / JSON format.
+
+<p align="center">
+  <img src="github/Pasted 2026-10-22 at 11.16.17 PM.png" alt="Blossom Screenshot" width="512">
+</p>
