@@ -10,8 +10,8 @@
 - 💻 **Processor Architecture**: Intel x86_64 / Apple Silicon ARM64
 - 🔧 **Source Files Building**: Xcode 26+
 ### Installation:
-- Download Release (Blossom-v1.0.dmg)
-- Drag Application icon into `Applications` folder or click `Install` on dialog.
+- Download Release (Blossom-v1.1.dmg)
+- Drag Application icon into `Applications` folder or click `Install` on dialog window.
 - Open Application (Right Click -> Open / System Settings -> Accessibility -> Open Anyway)
 - Launch line by pressing `⌥ + Space`
 ### Features:
