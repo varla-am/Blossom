@@ -4,6 +4,14 @@
 
 <h1 align="center">Blossom</h1>
 
+<p align="center">
+  <a href="https://github.com/varla-am/Blossom/releases/latest"><img src="https://img.shields.io/github/v/release/varla-am/Blossom?label=release&color=3b82f6" alt="Latest release"></a>
+  <img src="https://img.shields.io/badge/macOS-14%2B-lightgrey?logo=apple&logoColor=white" alt="macOS 14+">
+  <img src="https://img.shields.io/badge/Swift-5-F05138?logo=swift&logoColor=white" alt="Swift 5">
+  <img src="https://img.shields.io/badge/network%20access-none-brightgreen" alt="Network access: none">
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/varla-am/Blossom?color=lightgrey" alt="MIT license"></a>
+</p>
+
 ## Blossom: A tiny Spotlight-style launcher for macOS: press a hotkey, type a command, and things happen.
 ### Requirements:
 - 💿 **Minimal macOS**: macOS 14 Sonoma (If macOS release is before 26 Tahoe, Liquid Glass will not work)
