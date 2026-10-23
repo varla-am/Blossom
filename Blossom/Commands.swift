@@ -74,12 +74,52 @@ struct BlossomCommand: Codable, Identifiable, Hashable {
     var kind: ActionKind
     /// Left empty on an action that takes one, it comes from what you type after the keyword: "volume 30".
     var argument = ""
+    /// A second value, for Run Shell Command: text added after the first, or the word Typed for what you type after the keyword.
+    var extra = ""
+
+    init(id: UUID = UUID(), keyword: String, kind: ActionKind, argument: String = "", extra: String = "") {
+        self.id = id
+        self.keyword = keyword
+        self.kind = kind
+        self.argument = argument
+        self.extra = extra
+    }
+
+    // Commands saved by earlier versions have no `extra`; without this they would all be dropped
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        keyword = try c.decode(String.self, forKey: .keyword)
+        kind = try c.decode(ActionKind.self, forKey: .kind)
+        argument = try c.decode(String.self, forKey: .argument)
+        extra = try c.decodeIfPresent(String.self, forKey: .extra) ?? ""
+    }
+
+    /// Whether what you type after the keyword goes to the end of the shell command, as one quoted word: `claude -p 'what you typed'`.
+    /// Value 2 left empty means Typed, as long as there is a Value to put it after.
+    var usesTyped: Bool {
+        let second = extra.trimmingCharacters(in: .whitespaces).lowercased()
+        return kind == .shell && (second == "typed" || (second.isEmpty && !argument.trimmingCharacters(in: .whitespaces).isEmpty))
+    }
+
+    /// Typed was asked for by name, so nothing typed is a mistake; left empty it is optional, and the command runs as it is.
+    var typedRequired: Bool {
+        usesTyped && !extra.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
+    /// The value as Settings holds it, without anything typed: the two values side by side on a shell command.
+    var fixedArgument: String {
+        guard kind == .shell, !usesTyped else { return argument }
+        return [argument, extra].map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }.joined(separator: " ")
+    }
 }
 
 /// A command that fits what was typed, with the argument it will run with.
 struct Match: Identifiable {
     let command: BlossomCommand
     let argument: String
+    /// The command waits for text after its keyword, and none was typed.
+    var needsTyped = false
     var id: UUID { command.id }
 }
 
@@ -132,10 +172,11 @@ final class CommandStore: ObservableObject {
         var keyword: String
         var action: ActionKind
         var value: String?
+        var value2: String?
     }
 
     var json: String {
-        let items = commands.map { JSONCommand(keyword: $0.keyword, action: $0.kind, value: $0.argument.isEmpty ? nil : $0.argument) }
+        let items = commands.map { JSONCommand(keyword: $0.keyword, action: $0.kind, value: $0.argument.isEmpty ? nil : $0.argument, value2: $0.extra.isEmpty ? nil : $0.extra) }
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .withoutEscapingSlashes]
         guard let data = try? encoder.encode(items) else { return "[]" }
@@ -166,10 +207,23 @@ final class CommandStore: ObservableObject {
                 id: commands.indices.contains(index) ? commands[index].id : UUID(),
                 keyword: item.keyword,
                 kind: item.action,
-                argument: item.value ?? ""
+                argument: item.value ?? "",
+                extra: item.value2 ?? ""
             )
         }
         return nil
+    }
+
+    /// A command with the text typed after its keyword worked in.
+    private func match(_ command: BlossomCommand, typed: String) -> Match {
+        if command.usesTyped {
+            guard !typed.isEmpty else { return Match(command: command, argument: command.fixedArgument, needsTyped: command.typedRequired) }
+            // One word for the shell, whatever was typed: spaces, quotes and $ stay as they are
+            let quoted = "'" + typed.replacingOccurrences(of: "'", with: "'\\''") + "'"
+            return Match(command: command, argument: [command.fixedArgument, quoted].filter { !$0.isEmpty }.joined(separator: " "))
+        }
+        let fixed = command.fixedArgument
+        return Match(command: command, argument: fixed.isEmpty ? typed : fixed)
     }
 
     /// The commands that fit the query: "volume 30" fills in the argument, "vol" and "lume" find "volume".
@@ -177,7 +231,7 @@ final class CommandStore: ObservableObject {
         let typed = query.trimmingCharacters(in: .whitespaces)
         let q = typed.lowercased()
         guard !q.isEmpty else {
-            return commands.map { Match(command: $0, argument: $0.argument) }
+            return commands.map { match($0, typed: "") }
         }
 
         var scored: [(score: Int, match: Match)] = []
@@ -185,15 +239,15 @@ final class CommandStore: ObservableObject {
             let keyword = command.keyword.lowercased()
             guard !keyword.isEmpty else { continue }
 
-            if command.kind.takesArgument, command.argument.isEmpty, q.hasPrefix(keyword + " ") {
+            if command.kind.takesArgument, command.fixedArgument.isEmpty || command.usesTyped, q.hasPrefix(keyword + " ") {
                 let argument = typed.dropFirst(keyword.count).trimmingCharacters(in: .whitespaces)
-                scored.append((0, Match(command: command, argument: argument)))
+                scored.append((0, match(command, typed: argument)))
             } else if keyword == q {
-                scored.append((0, Match(command: command, argument: command.argument)))
+                scored.append((0, match(command, typed: "")))
             } else if keyword.hasPrefix(q) {
-                scored.append((1, Match(command: command, argument: command.argument)))
+                scored.append((1, match(command, typed: "")))
             } else if keyword.contains(q) || command.kind.title.lowercased().contains(q) {
-                scored.append((2, Match(command: command, argument: command.argument)))
+                scored.append((2, match(command, typed: "")))
             }
         }
         // Sorting by score alone keeps the order from Settings within each group

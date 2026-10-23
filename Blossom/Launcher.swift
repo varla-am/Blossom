@@ -176,7 +176,10 @@ final class LauncherController: NSObject, NSWindowDelegate {
             openSettings()
             return
         }
-        if let error = Actions.run(match.command.kind, argument: match.argument) {
+        let error = match.needsTyped
+            ? "Type something after “\(match.command.keyword)”, like “\(match.command.keyword) hello”"
+            : Actions.run(match.command.kind, argument: match.argument)
+        if let error {
             // Back again with what went wrong, and the query as it was
             let query = model.query
             show()
@@ -387,6 +390,7 @@ private struct ResultRow: View {
 
     private var subtitle: String {
         let kind = match.command.kind
+        if match.needsTyped { return "\(kind.title) · \(match.argument) …" }
         if !match.argument.isEmpty { return "\(kind.title) · \(match.argument)" }
         if kind.takesArgument { return "\(kind.title) · type \(match.command.keyword) \(kind.argumentHint)" }
         return kind.title

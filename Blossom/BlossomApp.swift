@@ -47,7 +47,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             let window = NSWindow(contentViewController: NSHostingController(rootView: SettingsView(store: store, hotKey: hotKey)))
             window.title = "Blossom Settings"
             window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
-            window.setContentSize(NSSize(width: 640, height: 600))
+            window.setContentSize(NSSize(width: 760, height: 600))
             window.isReleasedWhenClosed = false
             window.center()
             window.delegate = self

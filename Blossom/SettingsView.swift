@@ -94,9 +94,10 @@ struct SettingsView: View {
                 case .friendly:
                     CommandColumns {
                         Color.clear.frame(width: 20, height: 1)
-                        Text("Keyword").frame(width: 150, alignment: .leading)
-                        Text("Action").frame(width: 190, alignment: .leading)
-                        Text("Value").frame(width: 150, alignment: .leading)
+                        Text("Keyword").frame(width: 120, alignment: .leading)
+                        Text("Action").frame(width: 180, alignment: .leading)
+                        Text("Value").frame(width: 130, alignment: .leading)
+                        Text("Value 2").frame(width: 110, alignment: .leading)
                         Color.clear.frame(width: 20, height: 1)
                     }
                     .font(.callout.weight(.semibold))
@@ -121,14 +122,14 @@ struct SettingsView: View {
                 Text("Commands")
             } footer: {
                 Text(format == .json
-                     ? "Each command is {\"keyword\", \"action\", \"value\"}; value is optional. Changes apply as soon as the JSON is valid."
-                     : "Leave the value empty on Set volume, Open app, Open website or Run shell command, and Blossom takes it from what you type: “volume 30”.")
+                     ? "Each command is {\"keyword\", \"action\", \"value\"}; value and value2 are optional. Changes apply as soon as the JSON is valid."
+                     : "Leave the value empty on Set volume, Open app, Open website or Run shell command, and Blossom takes it from what you type: “volume 30”. On Run shell command with a Value, what you type goes after it: Value “claude -p” makes “claude hello” run claude -p 'hello'. Value 2 adds fixed text instead.")
                     .foregroundStyle(.secondary)
             }
         }
         .formStyle(.grouped)
         .tint(Accent.color(accentHex))
-        .frame(minWidth: 600, minHeight: 560)
+        .frame(minWidth: 720, minHeight: 560)
     }
 }
 
@@ -266,20 +267,26 @@ private struct CommandRow: View {
                     .labelsHidden()
                     .textFieldStyle(.roundedBorder)
                     .multilineTextAlignment(.leading)
-                    .frame(width: 150)
+                    .frame(width: 120)
                 Picker("", selection: $command.kind) {
                     ForEach(ActionKind.allCases) { kind in
                         Label(kind.title, systemImage: kind.symbol).tag(kind)
                     }
                 }
                 .labelsHidden()
-                .frame(width: 190, alignment: .leading)
+                .frame(width: 180, alignment: .leading)
                 TextField("", text: $command.argument, prompt: Text(command.kind.takesArgument ? "Typed, or \(command.kind.argumentHint)" : "None"))
                     .labelsHidden()
                     .textFieldStyle(.roundedBorder)
                     .multilineTextAlignment(.leading)
-                    .frame(width: 150)
+                    .frame(width: 130)
                     .disabled(!command.kind.takesArgument)
+                TextField("", text: $command.extra, prompt: Text(command.kind == .shell ? "Typed" : "None"))
+                    .labelsHidden()
+                    .textFieldStyle(.roundedBorder)
+                    .multilineTextAlignment(.leading)
+                    .frame(width: 110)
+                    .disabled(command.kind != .shell)
                 Button(role: .destructive, action: remove) {
                     Image(systemName: "minus.circle.fill")
                 }

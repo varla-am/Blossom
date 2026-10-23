@@ -63,8 +63,9 @@ enum Actions {
 
         case .shell:
             guard !argument.isEmpty else { return "Which command? Type it after the keyword" }
-            // A login shell, so aliases and PATH from ~/.zprofile work like in Terminal
-            return launch("/bin/zsh", ["-lc", argument])
+            // Its output gets a window of its own
+            OutputRunner.shared.run(argument)
+            return nil
 
         case .settings:
             // Opened by the launcher itself
