@@ -27,6 +27,9 @@
 - 📓 **Themes**: Three themes: Aqua, Default (Big Sur - Sequoia) and Liquid Glass.
 - ✏️ **Settings Format**: Edit settings in User Friendly / JSON format.
 
+### License:
+**MIT**
+
 <p align="center">
   <img src="github/Pasted 2026-10-22 at 11.16.17 PM.png" alt="Blossom Screenshot" width="512">
 </p>
