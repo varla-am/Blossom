@@ -1,4 +1,5 @@
 import AppKit
+import Carbon.HIToolbox
 import SwiftUI
 
 /// A borderless panel that can still take typing, like Spotlight's.
@@ -84,6 +85,8 @@ final class LauncherController: NSObject, NSWindowDelegate {
     let model: LauncherModel
     private let panel: LauncherPanel
     private var keyMonitor: Any?
+    /// The keyboard layout to give back when the launcher closes, if it switched to a Latin one.
+    private var layoutToRestore: TISInputSource?
     private let openSettings: () -> Void
 
     init(store: CommandStore, openSettings: @escaping () -> Void) {
@@ -128,6 +131,23 @@ final class LauncherController: NSObject, NSWindowDelegate {
         }
         panel.makeKeyAndOrderFront(nil)
         startKeys()
+        if UserDefaults.standard.bool(forKey: Prefs.latinLayout) { switchToLatinLayout() }
+    }
+
+    /// The current layout (Russian, say) can't type "open"; the last Latin one you used can.
+    private func switchToLatinLayout() {
+        guard layoutToRestore == nil,
+              let current = TISCopyCurrentKeyboardInputSource()?.takeRetainedValue(),
+              let latin = TISCopyCurrentASCIICapableKeyboardInputSource()?.takeRetainedValue(),
+              !CFEqual(current, latin) else { return }
+        layoutToRestore = current
+        TISSelectInputSource(latin)
+    }
+
+    private func restoreLayout() {
+        guard let layout = layoutToRestore else { return }
+        layoutToRestore = nil
+        TISSelectInputSource(layout)
     }
 
     /// Sizes the panel for the hints setting and any error, keeping its top where it is.
@@ -142,6 +162,7 @@ final class LauncherController: NSObject, NSWindowDelegate {
     func hide() {
         stopKeys()
         panel.orderOut(nil)
+        restoreLayout()
     }
 
     func windowDidResignKey(_ notification: Notification) {
@@ -317,6 +338,9 @@ struct LauncherView: View {
         .frame(width: LauncherController.width, height: LauncherController.height(hints: showHints, error: model.error != nil))
         .background(PanelSurface(style: style, theme: theme, accent: accent, radius: radius))
         .clipShape(shape)
+        // Switching Terminal → Graphic left the field's cursor and the row highlight in the old colour until a restart:
+        // a new look gets new views, so nothing from the old one is kept
+        .id([styleRaw, themeRaw, accentHex].joined(separator: "|"))
         .onChange(of: model.shown) {
             isFocused = true
         }
@@ -390,6 +414,10 @@ private struct ResultRow: View {
 
     private var subtitle: String {
         let kind = match.command.kind
+        if kind == .webSearch {
+            let engine = SearchEngine.current.title
+            return match.argument.isEmpty ? "\(kind.title) · \(engine) · type \(match.command.keyword) \(kind.argumentHint)" : "\(kind.title) · \(engine) · \(match.argument)"
+        }
         if match.needsTyped { return "\(kind.title) · \(match.argument) …" }
         if !match.argument.isEmpty { return "\(kind.title) · \(match.argument)" }
         if kind.takesArgument { return "\(kind.title) · type \(match.command.keyword) \(kind.argumentHint)" }

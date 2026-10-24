@@ -9,6 +9,9 @@ enum Prefs {
     static let commandsFormat = "commandsFormat"
     static let theme = "theme"
     static let accent = "accent"
+    static let searchEngine = "searchEngine"
+    static let customSearchURL = "customSearchURL"
+    static let latinLayout = "latinLayout"
 }
 
 enum InputStyle: String, CaseIterable, Identifiable {
@@ -78,4 +81,61 @@ enum Fonts {
     static let families = NSFontManager.shared.availableFontFamilies
         .filter { !$0.hasPrefix(".") }
         .sorted { $0.localizedStandardCompare($1) == .orderedAscending }
+}
+
+/// Where Web Search sends the words: one of these, or an address of your own.
+enum SearchEngine: String, CaseIterable, Identifiable {
+    case google, duckDuckGo, bing, brave, ecosia, startpage, yandex, custom
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .google: "Google"
+        case .duckDuckGo: "DuckDuckGo"
+        case .bing: "Bing"
+        case .brave: "Brave Search"
+        case .ecosia: "Ecosia"
+        case .startpage: "Startpage"
+        case .yandex: "Yandex"
+        case .custom: "Custom…"
+        }
+    }
+
+    /// The search address, with {query} where the words go.
+    var template: String {
+        switch self {
+        case .google: "https://www.google.com/search?q={query}"
+        case .duckDuckGo: "https://duckduckgo.com/?q={query}"
+        case .bing: "https://www.bing.com/search?q={query}"
+        case .brave: "https://search.brave.com/search?q={query}"
+        case .ecosia: "https://www.ecosia.org/search?q={query}"
+        case .startpage: "https://www.startpage.com/do/search?q={query}"
+        case .yandex: "https://yandex.com/search/?text={query}"
+        case .custom: UserDefaults.standard.string(forKey: Prefs.customSearchURL) ?? ""
+        }
+    }
+
+    static var current: SearchEngine {
+        SearchEngine(rawValue: UserDefaults.standard.string(forKey: Prefs.searchEngine) ?? "") ?? .google
+    }
+
+    /// Whether this engine's address can take a search: a custom one has to say where the words go.
+    var isUsable: Bool { template.contains("{query}") && Self.address(template, query: "x") != nil }
+
+    /// The page to open for these words with the engine picked in Settings; nil when the address is no good.
+    static func url(for query: String) -> URL? {
+        address(current.template, query: query)
+    }
+
+    private static func address(_ template: String, query: String) -> URL? {
+        // Everything that means something in an address is escaped, so "a&b=c" stays one search
+        var allowed = CharacterSet.urlQueryAllowed
+        allowed.remove(charactersIn: "&+=#?/:;@$,")
+        guard template.contains("{query}"), let encoded = query.addingPercentEncoding(withAllowedCharacters: allowed),
+              let url = URL(string: template.replacingOccurrences(of: "{query}", with: encoded)),
+              let scheme = url.scheme?.lowercased(), scheme == "http" || scheme == "https", url.host != nil
+        else { return nil }
+        return url
+    }
 }

@@ -61,6 +61,13 @@ enum Actions {
             NSWorkspace.shared.open(url)
             return nil
 
+        case .webSearch:
+            let query = argument.trimmingCharacters(in: .whitespaces)
+            guard !query.isEmpty else { return "What to search for? Type it after the keyword, like “search cats”" }
+            guard let url = SearchEngine.url(for: query) else { return "The search engine's address is wrong: it needs {query} in it. Check Settings." }
+            NSWorkspace.shared.open(url)
+            return nil
+
         case .shell:
             guard !argument.isEmpty else { return "Which command? Type it after the keyword" }
             // Its output gets a window of its own

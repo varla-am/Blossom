@@ -10,14 +10,29 @@ struct SettingsView: View {
     @AppStorage(Prefs.commandsFormat) private var formatRaw = CommandsFormat.friendly.rawValue
     @AppStorage(Prefs.theme) private var themeRaw = Theme.standard.rawValue
     @AppStorage(Prefs.accent) private var accentHex = Accent.defaultHex
+    @AppStorage(Prefs.searchEngine) private var searchEngineRaw = SearchEngine.google.rawValue
+    @AppStorage(Prefs.customSearchURL) private var customSearchURL = ""
+    @AppStorage(Prefs.latinLayout) private var latinLayout = false
     @State private var opensAtLogin = SMAppService.mainApp.status == .enabled
     @State private var loginError: String?
+    @State private var confirmsRestore = false
 
     private var style: InputStyle { InputStyle(rawValue: styleRaw) ?? .graphic }
     private var format: CommandsFormat { CommandsFormat(rawValue: formatRaw) ?? .friendly }
     private var theme: Theme { Theme(rawValue: themeRaw) ?? .standard }
 
     var body: some View {
+        TabView {
+            general
+                .tabItem { Label("General", systemImage: "gearshape") }
+            AboutView()
+                .tabItem { Label("About", systemImage: "info.circle") }
+        }
+        .tint(Accent.color(accentHex))
+        .frame(minWidth: 720, minHeight: 560)
+    }
+
+    private var general: some View {
         Form {
             Section("Open Blossom") {
                 LabeledContent("Shortcut") {
@@ -48,6 +63,31 @@ struct SettingsView: View {
                 if let loginError {
                     Text(loginError).foregroundStyle(.red)
                 }
+                Toggle(isOn: $latinLayout) {
+                    Text("Type in Latin letters")
+                    Text("Switches to your last Latin keyboard layout while Blossom is open, and back when it closes. For when the keyboard is on Russian and you want to type “open”.")
+                }
+            }
+
+            Section {
+                Picker("Search engine", selection: $searchEngineRaw) {
+                    ForEach(SearchEngine.allCases) { engine in
+                        Text(engine.title).tag(engine.rawValue)
+                    }
+                }
+                if searchEngineRaw == SearchEngine.custom.rawValue {
+                    TextField("Address", text: $customSearchURL, prompt: Text("https://example.com/search?q={query}"))
+                        .textFieldStyle(.roundedBorder)
+                    if !SearchEngine.custom.isUsable {
+                        Label("The address must start with https:// and have {query} where the words go.", systemImage: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.orange)
+                    }
+                }
+            } header: {
+                Text("Web Search")
+            } footer: {
+                Text("“search cats” opens the results in your browser. The Web Search command picks the engine from here.")
+                    .foregroundStyle(.secondary)
             }
 
             Section("Look") {
@@ -113,7 +153,7 @@ struct SettingsView: View {
                             store.commands.append(BlossomCommand(keyword: "new", kind: .openApp))
                         }
                         Spacer()
-                        Button("Restore Defaults") { store.restoreDefaults() }
+                        Button("Restore Defaults") { confirmsRestore = true }
                     }
                 case .json:
                     JSONEditor(store: store)
@@ -122,14 +162,57 @@ struct SettingsView: View {
                 Text("Commands")
             } footer: {
                 Text(format == .json
-                     ? "Each command is {\"keyword\", \"action\", \"value\"}; value and value2 are optional. Changes apply as soon as the JSON is valid."
-                     : "Leave the value empty on Set volume, Open app, Open website or Run shell command, and Blossom takes it from what you type: “volume 30”. On Run shell command with a Value, what you type goes after it: Value “claude -p” makes “claude hello” run claude -p 'hello'. Value 2 adds fixed text instead.")
+                     ? "Each command is {\"keyword\", \"action\", \"value\"}; value and value2 are optional. Web Search is \"webSearch\". Changes apply as soon as the JSON is valid."
+                     : "Leave the value empty on Set volume, Open app, Open website, Web Search or Run shell command, and Blossom takes it from what you type: “volume 30”. On Run shell command with a Value, what you type goes after it: Value “claude -p” makes “claude hello” run claude -p 'hello'. Value 2 adds fixed text instead.")
                     .foregroundStyle(.secondary)
             }
         }
         .formStyle(.grouped)
-        .tint(Accent.color(accentHex))
-        .frame(minWidth: 720, minHeight: 560)
+        .confirmationDialog("Restore the default commands?", isPresented: $confirmsRestore, titleVisibility: .visible) {
+            Button("Restore Defaults", role: .destructive) { store.restoreDefaults() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("The commands you added or changed will be replaced by the ones Blossom came with.")
+        }
+    }
+}
+
+/// What this is, which version, and where to find it.
+private struct AboutView: View {
+    private var version: String {
+        let info = Bundle.main.infoDictionary
+        let short = info?["CFBundleShortVersionString"] as? String ?? "?"
+        let build = info?["CFBundleVersion"] as? String ?? "?"
+        return "Version \(short) (\(build))"
+    }
+
+    var body: some View {
+        VStack(spacing: 10) {
+            Spacer()
+            Image(nsImage: NSApp.applicationIconImage)
+                .resizable()
+                .frame(width: 96, height: 96)
+            Text("Blossom").font(.system(size: 28, weight: .semibold))
+            Text(version).foregroundStyle(.secondary)
+            Text("A launcher for your Mac, opened by a shortcut and run with a few words.")
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: 360)
+                .padding(.top, 4)
+            Text("Blossom runs on your Mac and doesn't connect to the internet. Web Search only hands your words to your browser.")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: 380)
+            HStack(spacing: 18) {
+                Link("GitHub", destination: URL(string: "https://github.com/varla-am/Blossom")!)
+                Link("Releases", destination: URL(string: "https://github.com/varla-am/Blossom/releases")!)
+                Link("MIT License", destination: URL(string: "https://github.com/varla-am/Blossom/blob/main/LICENSE")!)
+            }
+            .padding(.top, 6)
+            Spacer()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding()
     }
 }
 

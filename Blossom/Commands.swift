@@ -5,7 +5,7 @@ import Combine
 enum ActionKind: String, Codable, CaseIterable, Identifiable {
     case screensaver, lockScreen, logout, sleep, displaySleep
     case volume, mute, darkMode, lightMode, darkModeOn
-    case openApp, openURL, shell
+    case openApp, openURL, webSearch, shell
     case settings
 
     var id: String { rawValue }
@@ -24,6 +24,7 @@ enum ActionKind: String, Codable, CaseIterable, Identifiable {
         case .darkModeOn: "Dark Mode"
         case .openApp: "Open App"
         case .openURL: "Open Website"
+        case .webSearch: "Web Search"
         case .shell: "Run Shell Command"
         case .settings: "Blossom Settings"
         }
@@ -43,6 +44,7 @@ enum ActionKind: String, Codable, CaseIterable, Identifiable {
         case .darkModeOn: "moon.fill"
         case .openApp: "app.badge"
         case .openURL: "globe"
+        case .webSearch: "magnifyingglass"
         case .shell: "terminal.fill"
         case .settings: "gearshape.fill"
         }
@@ -51,7 +53,7 @@ enum ActionKind: String, Codable, CaseIterable, Identifiable {
     /// Whether the action needs something more: a number, an app, a link, a command.
     var takesArgument: Bool {
         switch self {
-        case .volume, .openApp, .openURL, .shell: true
+        case .volume, .openApp, .openURL, .webSearch, .shell: true
         default: false
         }
     }
@@ -61,6 +63,7 @@ enum ActionKind: String, Codable, CaseIterable, Identifiable {
         case .volume: "0–100"
         case .openApp: "Safari"
         case .openURL: "youtube.com"
+        case .webSearch: "cats"
         case .shell: "say Hello"
         default: ""
         }
@@ -141,6 +144,7 @@ final class CommandStore: ObservableObject {
         BlossomCommand(keyword: "light", kind: .lightMode),
         BlossomCommand(keyword: "open", kind: .openApp),
         BlossomCommand(keyword: "youtube", kind: .openURL, argument: "youtube.com"),
+        BlossomCommand(keyword: "search", kind: .webSearch),
         BlossomCommand(keyword: "settings", kind: .settings),
     ]
 
@@ -148,11 +152,22 @@ final class CommandStore: ObservableObject {
         didSet { save() }
     }
 
+    /// Commands added by an update, offered once to people who already have their own list.
+    private static let webSearchOfferedKey = "webSearchOffered"
+
     private init() {
         if let data = UserDefaults.standard.data(forKey: Self.key),
-           let saved = try? JSONDecoder().decode([BlossomCommand].self, from: data) {
+           var saved = try? JSONDecoder().decode([BlossomCommand].self, from: data) {
+            // Version 1.2 brings Web Search: add "search" once, unless the list has a Web Search or the word is taken
+            if !UserDefaults.standard.bool(forKey: Self.webSearchOfferedKey) {
+                UserDefaults.standard.set(true, forKey: Self.webSearchOfferedKey)
+                if !saved.contains(where: { $0.kind == .webSearch || $0.keyword.lowercased() == "search" }) {
+                    saved.append(BlossomCommand(keyword: "search", kind: .webSearch))
+                }
+            }
             commands = saved
         } else {
+            UserDefaults.standard.set(true, forKey: Self.webSearchOfferedKey)
             commands = Self.defaults
         }
     }

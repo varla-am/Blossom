@@ -18,12 +18,13 @@
 - 💻 **Processor Architecture**: Intel x86_64 / Apple Silicon ARM64
 - 🔧 **Source Files Building**: Xcode 26+
 ### Installation:
-- Download Release (Blossom-v1.1.dmg)
+- Download Release (Blossom-v1.2.dmg)
 - Drag Application icon into `Applications` folder or click `Install` on dialog window.
 - Open Application (Right Click -> Open / System Settings -> Accessibility -> Open Anyway)
 - Launch line by pressing `⌥ + Space`
 ### Features:
 - 📟 **Commands**: Big option of commands including Toggle Light/Dark mode, Screensaver, Sleep, Lock Screen, Logout, Volume
+- 🔎 **Web Search**: `search cats` opens the results in your browser; pick Google, DuckDuckGo, Bing, Brave, Ecosia, Startpage, Yandex or your own address in Settings.
 - 📓 **Themes**: Three themes: Aqua, Default (Big Sur - Sequoia) and Liquid Glass.
 - ✏️ **Settings Format**: Edit settings in User Friendly / JSON format.
 
